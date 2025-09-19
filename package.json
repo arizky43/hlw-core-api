@@ -1,0 +1,18 @@
+{
+  "name": "hlw-core-api",
+  "version": "1.0.50",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts",
+    "db:migration": "bun run src/migrations/index.ts"
+  },
+  "dependencies": {
+    "elysia": "latest",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.20",
+    "bun-types": "latest"
+  },
+  "module": "src/index.js"
+}
