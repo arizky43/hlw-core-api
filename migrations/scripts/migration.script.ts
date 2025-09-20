@@ -9,7 +9,7 @@ export const runMigration = async (): Promise<void> => {
     console.log('Start run migration sql');
   
     // Get list file in sql
-    const sqlFiles = await getListFiles('sql');
+    const sqlFiles = await getListFiles('../../sql');
   
     const getMigrations: IMigration[] = await sql`
       SELECT id, created_at
