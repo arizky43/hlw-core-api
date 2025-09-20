@@ -4,9 +4,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
-    "db:migration": "bun run src/migrations/index.ts"
+    "db:migration": "bun run migrations/index.ts"
   },
   "dependencies": {
+    "date-fns": "^4.1.0",
     "elysia": "latest",
     "lodash": "^4.17.21"
   },
