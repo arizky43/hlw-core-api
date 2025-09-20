@@ -9,5 +9,5 @@ export const getListFiles = async (path: string): Promise<IFile[]> => {
   const fullPath = getFullPath(path);
   const listFiles = await readdir(fullPath);
 
-  return listFiles.map((fileName) => ({ fileName, fullPath: `${fullPath}/${fileName}` }));
+  return listFiles.sort().map((fileName) => ({ fileName, fullPath: `${fullPath}/${fileName}` }));
 };
