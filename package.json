@@ -7,6 +7,8 @@
     "db:migration": "bun run migrations/index.ts"
   },
   "dependencies": {
+    "@elysiajs/jwt": "^1.4.0",
+    "@elysiajs/openapi": "^1.4.5",
     "date-fns": "^4.1.0",
     "elysia": "latest",
     "lodash": "^4.17.21"

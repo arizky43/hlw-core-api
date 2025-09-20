@@ -1,6 +1,25 @@
 import { Elysia } from "elysia";
+import { openapi } from '@elysiajs/openapi'
+import { getConfig, getConfigNumber } from "./common/config";
+import authRoutes from "./core/auth/auth.routes";
+import { createElysiaHelperErrorHandler, ConsoleLogger } from "./common/errors";
 
-const app = new Elysia().get("/", () => "Hello Elysia").listen(3000);
+const nodeEnv = getConfig('NODE_ENV', 'development');
+
+const helperErrorHandler = createElysiaHelperErrorHandler({
+  logger: new ConsoleLogger(),
+  isProduction: nodeEnv === 'production',
+  enableDetailedLogging: nodeEnv !== 'production',
+  enableStackTrace: nodeEnv !== 'production',
+  logLevel: nodeEnv === 'production' ? 'error' : 'debug',
+});
+
+const app = new Elysia()
+  .onError(helperErrorHandler)
+  .use(openapi())
+  .use(authRoutes)
+  .get("/", () => "Hello Elysia")
+  .listen(getConfigNumber('APP_PORT', 3001));
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
