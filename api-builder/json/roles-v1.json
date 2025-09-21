@@ -10,6 +10,13 @@
         "description": "Retrieve a role by its ID",
         "tags": ["Roles"]
       },
+      "params": {
+        "id": {
+          "type": "String",
+          "format": "uuid",
+          "description": "Role ID"
+        }
+      },
       "payload": {},
       "handler": {
         "isGenerated": true,

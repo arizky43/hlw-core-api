@@ -8,7 +8,7 @@ const rolesV1Routes = new Elysia({ prefix: "/roles/v1" })
     params: t.Object({
       id: t.String({
         format: "uuid",
-        description: "Id ID",
+        description: "Role ID"
       })
     }),
     detail: {

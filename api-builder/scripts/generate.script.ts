@@ -88,7 +88,7 @@ export default ${className};
 function generateRouteMethod(route: any, moduleName: string): string {
   const method = route.method.toLowerCase();
   const pathParams = extractPathParams(route.path);
-  const paramsValidation = generateParamsValidation(pathParams);
+  const paramsValidation = generateParamsValidation(pathParams, route.params);
   
   // Generate params destructuring
   const paramsDestructuring = pathParams.length > 0 
@@ -118,11 +118,19 @@ function extractPathParams(path: string): string[] {
   return matches ? matches.map(match => match.slice(1)) : [];
 }
 
-function generateParamsValidation(pathParams: string[]): string {
+function generateParamsValidation(pathParams: string[], paramsConfig?: any): string {
   if (pathParams.length === 0) return '';
   
   const paramsObject = pathParams.map(param => {
-    // Assume UUID format for id parameters, string for others
+    // Use configuration from JSON if available, otherwise fallback to defaults
+    if (paramsConfig && paramsConfig[param]) {
+      const config = paramsConfig[param];
+      const typeMethod = getElysiaTypeMethod(config.type);
+      const options = generateTypeOptions(config);
+      return `      ${param}: ${typeMethod}(${options})`;
+    }
+    
+    // Fallback to default behavior
     if (param === 'id') {
       return `      ${param}: t.String({\n        format: "uuid",\n        description: "${param.charAt(0).toUpperCase() + param.slice(1)} ID",\n      })`;
     }
@@ -130,4 +138,49 @@ function generateParamsValidation(pathParams: string[]): string {
   }).join(',\n');
 
   return `\n    params: t.Object({\n${paramsObject}\n    })`;
+}
+
+function getElysiaTypeMethod(type: string): string {
+  switch (type) {
+    case 'String': return 't.String';
+    case 'Number': return 't.Number';
+    case 'Boolean': return 't.Boolean';
+    case 'Array': return 't.Array';
+    case 'Object': return 't.Object';
+    default: return 't.String';
+  }
+}
+
+function generateTypeOptions(config: any): string {
+  const options: string[] = [];
+  
+  if (config.format) {
+    options.push(`format: "${config.format}"`);
+  }
+  
+  if (config.description) {
+    options.push(`description: "${config.description}"`);
+  }
+  
+  if (config.minimum !== undefined) {
+    options.push(`minimum: ${config.minimum}`);
+  }
+  
+  if (config.maximum !== undefined) {
+    options.push(`maximum: ${config.maximum}`);
+  }
+  
+  if (config.minLength !== undefined) {
+    options.push(`minLength: ${config.minLength}`);
+  }
+  
+  if (config.maxLength !== undefined) {
+    options.push(`maxLength: ${config.maxLength}`);
+  }
+  
+  if (options.length === 0) {
+    return '{}';
+  }
+  
+  return `{\n        ${options.join(',\n        ')}\n      }`;
 }
