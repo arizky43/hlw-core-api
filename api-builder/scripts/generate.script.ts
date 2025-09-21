@@ -69,14 +69,21 @@ function generateRouteFile(config: IRouteConfig): string {
   const className = `${moduleName}${version.charAt(0).toUpperCase() + version.slice(1)}Routes`;
   const prefix = `/${moduleName}/${version}`;
   
-  const imports = `import { findOneById } from "@/core/services/find.service";
+  const imports = `import { findOneById, findOne } from "@/core/services/find.service";
 import Elysia, { t } from "elysia";`;
+  
+  // Generate schema constants for each route
+  const schemaConstants = config.routes.map(route => 
+    generateSchemaConstant(route)
+  ).join('\n\n');
   
   const routeDefinitions = config.routes.map(route => 
     generateRouteMethod(route, moduleName)
   ).join('\n');
   
   return `${imports}
+
+${schemaConstants}
 
 const ${className} = new Elysia({ prefix: "${prefix}" })
 ${routeDefinitions};
@@ -86,20 +93,8 @@ export default ${className};
 }
 
 function generateRouteMethod(route: any, moduleName: string): string {
-  const method = route.method.toLowerCase();
-  const pathParams = extractPathParams(route.path);
-  const paramsValidation = generateParamsValidation(pathParams, route.params);
+  const schemaName = `${route.name}PayloadSchema`;
   
-  // Generate params destructuring
-  const paramsDestructuring = pathParams.length > 0 
-    ? `{ params: { ${pathParams.join(', ')} }}` 
-    : '{}';
-  
-  // Generate function parameters for findOneById
-  const functionParams = pathParams.length > 0 
-    ? `${pathParams.join(', ')}, "${route.handler.query}"` 
-    : `"${route.handler.query}"`;
-
   const detailSection = `,
     detail: {
       summary: "${route.openapi.summary}",
@@ -107,37 +102,50 @@ function generateRouteMethod(route: any, moduleName: string): string {
       tags: ["${route.openapi.tags.join('", "')}"],
     }`;
   
-  return `  .${method}("${route.path}", (${paramsDestructuring}) => {
-    return findOneById(${functionParams});
-  }${paramsValidation ? `, {${paramsValidation}${detailSection}
-  }` : ''})`;
-}
-
-function extractPathParams(path: string): string[] {
-  const matches = path.match(/:([a-zA-Z_][a-zA-Z0-9_]*)/g);
-  return matches ? matches.map(match => match.slice(1)) : [];
-}
-
-function generateParamsValidation(pathParams: string[], paramsConfig?: any): string {
-  if (pathParams.length === 0) return '';
+  // Generate body destructuring for payload properties
+  const bodyParams = route.payload ? Object.keys(route.payload) : [];
+  const bodyDestructuring = bodyParams.length > 0 ? `{ body }` : '{}';
   
-  const paramsObject = pathParams.map(param => {
-    // Use configuration from JSON if available, otherwise fallback to defaults
-    if (paramsConfig && paramsConfig[param]) {
-      const config = paramsConfig[param];
-      const typeMethod = getElysiaTypeMethod(config.type);
-      const options = generateTypeOptions(config);
-      return `      ${param}: ${typeMethod}(${options})`;
-    }
+  // Handle different request types
+  if (route.handler.requestType === 'findOne') {
+    // Generate dynamic query building for findOne
+    const dynamicQueryLogic = generateDynamicQueryLogic(route, bodyParams);
     
-    // Fallback to default behavior
-    if (param === 'id') {
-      return `      ${param}: t.String({\n        format: "uuid",\n        description: "${param.charAt(0).toUpperCase() + param.slice(1)} ID",\n      })`;
-    }
-    return `      ${param}: t.String({\n        description: "${param.charAt(0).toUpperCase() + param.slice(1)}",\n      })`;
-  }).join(',\n');
+    return `  .post("${route.path}", (${bodyDestructuring}) => {
+${dynamicQueryLogic}
+    return findOne(payload, query);
+  }, {
+    body: ${schemaName}${detailSection}
+  })`;
+  } else {
+    // Default to findOneById
+    const functionParams = bodyParams.length > 0 
+      ? `body.${bodyParams[0]}, "${route.handler.query}"` 
+      : `"${route.handler.query}"`;
+    
+    return `  .post("${route.path}", (${bodyDestructuring}) => {
+    return findOneById(${functionParams});
+  }, {
+    body: ${schemaName}${detailSection}
+  })`;  
+  }
+}
 
-  return `\n    params: t.Object({\n${paramsObject}\n    })`;
+function generateSchemaConstant(route: any): string {
+  const schemaName = `${route.name}PayloadSchema`;
+  
+  if (!route.payload || Object.keys(route.payload).length === 0) {
+    return `const ${schemaName} = t.Object({});`;
+  }
+  
+  const payloadObject = Object.entries(route.payload).map(([key, config]: [string, any]) => {
+    const typeMethod = getElysiaTypeMethod(config.type);
+    const options = generateTypeOptions(config);
+    const optionalWrapper = config.optional ? `t.Optional(${typeMethod}(${options}))` : `${typeMethod}(${options})`;
+    return `  ${key}: ${optionalWrapper}`;
+  }).join(',\n');
+  
+  return `const ${schemaName} = t.Object({\n${payloadObject}\n});`;
 }
 
 function getElysiaTypeMethod(type: string): string {
@@ -183,4 +191,20 @@ function generateTypeOptions(config: any): string {
   }
   
   return `{\n        ${options.join(',\n        ')}\n      }`;
+}
+
+function generateDynamicQueryLogic(route: any, bodyParams: string[]): string {
+  const baseQuery = route.handler.query;
+  
+  return `    const payload = body;
+    const conditions: string[] = [];
+    
+    ${bodyParams.map(param => 
+      `if (body.${param} !== undefined) {
+      conditions.push("${param} = :${param}");
+    }`
+    ).join('\n    ')}
+    
+    const dynamicConditions = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
+    const query = "${baseQuery}".replace('{dynamic_conditions}', dynamicConditions);`;
 }
