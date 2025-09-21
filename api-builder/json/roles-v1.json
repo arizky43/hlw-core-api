@@ -36,21 +36,55 @@
       "name": "findRole",
       "path": "/find",
       "openapi": {
-        "summary": "Find Role by ID",
-        "description": "Retrieve a role by its ID",
+        "summary": "Find Role with Dynamic Conditions",
+        "description": "Retrieve a role using dynamic query conditions",
         "tags": ["Roles"]
       },
       "payload": {
         "id": {
           "type": "String",
           "format": "uuid",
-          "description": "Role id"
+          "description": "Role id",
+          "optional": true
+        },
+        "name": {
+          "type": "String",
+          "description": "Role name",
+          "optional": true
+        },
+        "access": {
+          "type": "Array",
+          "description": "Role access levels (array for IN operator)",
+          "optional": true
+        },
+        "is_active": {
+          "type": "Boolean",
+          "description": "Role active status",
+          "optional": true
         }
       },
       "handler": {
         "isGenerated": true,
         "requestType": "findOne",
-        "query": "SELECT id, name, access, is_active, created_at FROM roles WHERE id = :id AND deleted_at IS NULL ORDER BY created_at DESC"
+        "query": "SELECT id, name, access, is_active, created_at FROM roles WHERE {dynamic_conditions} AND deleted_at IS NULL ORDER BY created_at DESC",
+        "conditions": {
+          "id": {
+            "operator": "=",
+            "type": "uuid"
+          },
+          "name": {
+            "operator": "=",
+            "type": "string"
+          },
+          "access": {
+            "operator": "IN",
+            "type": "array"
+          },
+          "is_active": {
+            "operator": "=",
+            "type": "boolean"
+          }
+        }
       },
       "response": {
         "mapping": {

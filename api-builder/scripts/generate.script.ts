@@ -152,11 +152,12 @@ function generateSchemaConstant(route: any): string {
 
   const payloadObject = Object.entries(route.payload)
     .map(([key, config]: [string, any]) => {
-      const typeMethod = getElysiaTypeMethod(config.type);
-      const options = generateTypeOptions(config);
+      const typeMethod = getElysiaTypeMethod(config.type, config);
+      const options = isArrayType(config.type) ? "" : generateTypeOptions(config);
+      const typeWithOptions = isArrayType(config.type) ? typeMethod : `${typeMethod}(${options})`;
       const optionalWrapper = config.optional
-        ? `t.Optional(${typeMethod}(${options}))`
-        : `${typeMethod}(${options})`;
+        ? `t.Optional(${typeWithOptions})`
+        : typeWithOptions;
       return `  ${key}: ${optionalWrapper}`;
     })
     .join(",\n");
@@ -164,7 +165,7 @@ function generateSchemaConstant(route: any): string {
   return `const ${schemaName} = t.Object({\n${payloadObject}\n});`;
 }
 
-function getElysiaTypeMethod(type: string): string {
+function getElysiaTypeMethod(type: string, config?: any): string {
   switch (type) {
     case "String":
       return "t.String";
@@ -173,12 +174,18 @@ function getElysiaTypeMethod(type: string): string {
     case "Boolean":
       return "t.Boolean";
     case "Array":
-      return "t.Array";
+      // For arrays, we need to specify the items type
+      const itemType = config?.items || "t.String()";
+      return `t.Array(${itemType})`;
     case "Object":
       return "t.Object";
     default:
       return "t.String";
   }
+}
+
+function isArrayType(type: string): boolean {
+  return type === "Array";
 }
 
 function generateTypeOptions(config: any): string {
@@ -216,8 +223,99 @@ function generateTypeOptions(config: any): string {
 }
 
 function generateDynamicQueryLogic(route: any, bodyParams: string[]): string {
-  const query = route.handler.query;
+  const baseQuery = route.handler.query;
+  const conditions = route.handler.conditions;
+
+  if (!conditions || !baseQuery.includes('{dynamic_conditions}')) {
+    return `    const payload = body;
+    const query = "${baseQuery}";`;
+  }
 
   return `    const payload = body;
-    const query = "${query}";`;
+    const whereConditions: string[] = [];
+    const queryParams: Record<string, any> = {};
+
+    // Build dynamic WHERE conditions based on payload and conditions config
+    ${Object.entries(conditions).map(([field, config]: [string, any]) => {
+      return generateConditionLogic(field, config);
+    }).join('\n    ')}
+
+    // Combine conditions with AND
+    const dynamicWhere = whereConditions.length > 0 ? whereConditions.join(' AND ') : '1=1';
+    const query = \`${baseQuery.replace('{dynamic_conditions}', '${dynamicWhere}')}\`;
+    
+    // Merge payload with query params for parameter binding
+    Object.assign(payload, queryParams);`;
+}
+
+function generateConditionLogic(field: string, config: any): string {
+  const { operator, type } = config;
+  
+  switch (operator) {
+    case '=':
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} = :${field}\`);
+    }`;
+    
+    case 'IN':
+      return `if (payload.${field} !== undefined && Array.isArray(payload.${field}) && payload.${field}.length > 0) {
+      const placeholders = payload.${field}.map((_: any, index: number) => \`:${field}_\${index}\`).join(', ');
+      whereConditions.push(\`${field} IN (\${placeholders})\`);
+      payload.${field}.forEach((value: any, index: number) => {
+        queryParams[\`${field}_\${index}\`] = value;
+      });
+      delete payload.${field}; // Remove array from payload to avoid conflicts
+    }`;
+    
+    case 'IS NULL':
+      return `if (payload.${field} === null) {
+      whereConditions.push('${field} IS NULL');
+      delete payload.${field}; // Remove from payload as it's handled in query
+    }`;
+    
+    case 'IS NOT NULL':
+      return `if (payload.${field} === 'NOT_NULL') {
+      whereConditions.push('${field} IS NOT NULL');
+      delete payload.${field}; // Remove from payload as it's handled in query
+    }`;
+    
+    case 'LIKE':
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} LIKE :${field}\`);
+      queryParams.${field} = \`%\${payload.${field}}%\`;
+      delete payload.${field}; // Use queryParams version instead
+    }`;
+    
+    case 'ILIKE':
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} ILIKE :${field}\`);
+      queryParams.${field} = \`%\${payload.${field}}%\`;
+      delete payload.${field}; // Use queryParams version instead
+    }`;
+    
+    case '>=':
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} >= :${field}\`);
+    }`;
+    
+    case '<=':
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} <= :${field}\`);
+    }`;
+    
+    case '>':
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} > :${field}\`);
+    }`;
+    
+    case '<':
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} < :${field}\`);
+    }`;
+    
+    default:
+      return `if (payload.${field} !== undefined && payload.${field} !== null) {
+      whereConditions.push(\`${field} = :${field}\`);
+    }`;
+  }
 }
