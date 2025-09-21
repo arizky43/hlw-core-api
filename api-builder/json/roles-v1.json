@@ -41,26 +41,16 @@
         "tags": ["Roles"]
       },
       "payload": {
-        "name": {
+        "id": {
           "type": "String",
-          "optional": true,
-          "description": "Role name"
-        },
-        "access": {
-          "type": "String",
-          "optional": true,
-          "description": "Role access level"
-        },
-        "is_active": {
-          "type": "Boolean",
-          "optional": true,
-          "description": "Role active status"
+          "format": "uuid",
+          "description": "Role id"
         }
       },
       "handler": {
         "isGenerated": true,
         "requestType": "findOne",
-        "query": "SELECT id, name, access, is_active, created_at FROM roles WHERE {dynamic_conditions} AND deleted_at IS NULL ORDER BY created_at DESC"
+        "query": "SELECT id, name, access, is_active, created_at FROM roles WHERE id = :id AND deleted_at IS NULL ORDER BY created_at DESC"
       },
       "response": {
         "mapping": {

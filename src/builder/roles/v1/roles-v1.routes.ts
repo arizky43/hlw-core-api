@@ -9,15 +9,10 @@ const findRoleByIdPayloadSchema = t.Object({
 });
 
 const findRolePayloadSchema = t.Object({
-  name: t.Optional(t.String({
-        description: "Role name"
-      })),
-  access: t.Optional(t.String({
-        description: "Role access level"
-      })),
-  is_active: t.Optional(t.Boolean({
-        description: "Role active status"
-      }))
+  id: t.String({
+        format: "uuid",
+        description: "Role id"
+      })
 });
 
 const rolesV1Routes = new Elysia({ prefix: "/roles/v1" })
@@ -33,20 +28,7 @@ const rolesV1Routes = new Elysia({ prefix: "/roles/v1" })
   })
   .post("/find", ({ body }) => {
     const payload = body;
-    const conditions: string[] = [];
-    
-    if (body.name !== undefined) {
-      conditions.push("name = :name");
-    }
-    if (body.access !== undefined) {
-      conditions.push("access = :access");
-    }
-    if (body.is_active !== undefined) {
-      conditions.push("is_active = :is_active");
-    }
-    
-    const dynamicConditions = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
-    const query = "SELECT id, name, access, is_active, created_at FROM roles WHERE {dynamic_conditions} AND deleted_at IS NULL ORDER BY created_at DESC".replace('{dynamic_conditions}', dynamicConditions);
+    const query = "SELECT id, name, access, is_active, created_at FROM roles WHERE id = :id AND deleted_at IS NULL ORDER BY created_at DESC";
     return findOne(payload, query);
   }, {
     body: findRolePayloadSchema,

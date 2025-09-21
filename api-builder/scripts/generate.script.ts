@@ -194,17 +194,8 @@ function generateTypeOptions(config: any): string {
 }
 
 function generateDynamicQueryLogic(route: any, bodyParams: string[]): string {
-  const baseQuery = route.handler.query;
+  const query = route.handler.query;
   
   return `    const payload = body;
-    const conditions: string[] = [];
-    
-    ${bodyParams.map(param => 
-      `if (body.${param} !== undefined) {
-      conditions.push("${param} = :${param}");
-    }`
-    ).join('\n    ')}
-    
-    const dynamicConditions = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
-    const query = "${baseQuery}".replace('{dynamic_conditions}', dynamicConditions);`;
+    const query = "${query}";`;
 }
