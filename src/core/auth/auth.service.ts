@@ -19,7 +19,7 @@ export const login = async (payload: TLoginPayload) => {
       AND roles.is_active = true
       AND roles.deleted_at IS NULL`;
 
-    const user = get(userQuery, "[0]", undefined);
+    const user = get(userQuery, "0", null);
 
     if (!user) {
       return unauthorizedResponse("Invalid email or password");
@@ -72,7 +72,7 @@ export const refreshToken = async (payload: TRefreshTokenPayload) => {
         AND roles.is_active = true
         AND roles.deleted_at IS NULL`;
 
-    const user = get(userQuery, "[0]", undefined);
+    const user = get(userQuery, "0", null);
 
     if (!user) {
       return unauthorizedResponse("User not found or inactive");

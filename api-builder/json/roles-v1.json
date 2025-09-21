@@ -1,0 +1,30 @@
+{
+  "module": "roles",
+  "version": "v1",
+  "routes": [
+    {
+      "path": "/:id",
+      "method": "GET",
+      "openapi": {
+        "summary": "Find Role by ID",
+        "description": "Retrieve a role by its ID",
+        "tags": ["Roles"]
+      },
+      "payload": {},
+      "handler": {
+        "isGenerated": true,
+        "requestType": "findOneById",
+        "query": "SELECT id, name, access, is_active, created_at FROM roles WHERE id = :id AND deleted_at IS NULL ORDER BY created_at DESC"
+      },
+      "response": {
+        "mapping": {
+          "id": "id",
+          "name": "name",
+          "access": "access",
+          "isActive": "is_active",
+          "createdAt": "created_at"
+        }
+      }
+    }
+  ]
+}

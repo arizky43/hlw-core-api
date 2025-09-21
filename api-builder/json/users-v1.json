@@ -1,0 +1,30 @@
+{
+  "module": "users",
+  "version": "v1",
+  "routes": [
+    {
+      "path": "/:id",
+      "method": "GET",
+      "openapi": {
+        "summary": "Find User by ID",
+        "description": "Retrieve a user by its ID",
+        "tags": ["Users"]
+      },
+      "payload": {},
+      "handler": {
+        "isGenerated": true,
+        "requestType": "findOneById",
+        "query": "SELECT users.id, users.email, roles.access, users.is_active, users.created_at FROM users INNER JOIN roles ON users.role_id = roles.id WHERE users.id = :id AND users.deleted_at IS NULL ORDER BY users.created_at DESC"
+      },
+      "response": {
+        "mapping": {
+          "id": "id",
+          "email": "email",
+          "access": "access",
+          "isActive": "is_active",
+          "createdAt": "created_at"
+        }
+      }
+    }
+  ]
+}

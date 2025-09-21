@@ -4,7 +4,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
-    "db:migration": "bun run migrations/index.ts"
+    "db:migration": "bun run migrations/index.ts",
+    "api:generate": "bun run api-builder/index.ts --clean && bun run api-builder/index.ts"
   },
   "dependencies": {
     "@elysiajs/jwt": "^1.4.0",
