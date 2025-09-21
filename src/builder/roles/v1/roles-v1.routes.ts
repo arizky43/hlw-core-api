@@ -33,8 +33,8 @@ const rolesV1Routes = new Elysia({ prefix: "/roles/v1" })
   }, {
     body: findRolePayloadSchema,
     detail: {
-      summary: "Find Role by Dynamic Parameters",
-      description: "Retrieve a role using dynamic query parameters (name, access, is_active)",
+      summary: "Find Role by ID",
+      description: "Retrieve a role by its ID",
       tags: ["Roles"],
     }
   });
